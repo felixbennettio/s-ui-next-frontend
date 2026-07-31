@@ -6,7 +6,7 @@
       <v-tab value="connections">{{ $t('analytics.connections') }}</v-tab>
       <v-tab value="logs">{{ $t('logsView.title') }}</v-tab>
     </v-tabs>
-    <v-card-text>
+    <v-card-text class="analytics-content">
       <v-row density="compact">
         <v-col cols="12" md="3"><v-text-field v-model="search" :label="$t('analytics.search')" prepend-inner-icon="mdi-magnify" clearable @keyup.enter="load" /></v-col>
         <v-col cols="12" md="2"><v-text-field v-model="tag" :label="tagLabel" clearable @keyup.enter="load" /></v-col>
@@ -23,15 +23,17 @@
               <v-card variant="tonal"><v-card-text><div class="text-medium-emphasis">{{ summary.label }}</div><div class="text-h6" :class="summary.color">{{ bytes(summary.value) }}</div></v-card-text></v-card>
             </v-col>
           </v-row>
-          <v-table density="comfortable" hover>
+          <div class="analytics-table-scroll">
+          <v-table density="comfortable" hover class="usage-table">
             <thead><tr><th>{{ $t('analytics.user') }}</th><th>{{ $t('analytics.group') }}</th><th>{{ $t('analytics.upload') }}</th><th>{{ $t('analytics.download') }}</th><th>{{ $t('analytics.total') }}</th><th>{{ $t('analytics.quota') }}</th><th>{{ $t('analytics.online') }}</th><th>{{ $t('actions.action') }}</th></tr></thead>
             <tbody>
               <tr v-for="item in usageItems" :key="item.user">
-                <td>{{ item.user }}</td><td>{{ item.group || '—' }}</td><td class="text-orange">{{ bytes(item.upload) }}</td><td class="text-green">{{ bytes(item.download) }}</td><td>{{ bytes(item.total) }}</td><td>{{ bytes(item.quota) }}</td><td><v-icon :color="item.online ? 'success' : 'disabled'" icon="mdi-circle" size="small" /></td>
+                <td class="connection-break">{{ item.user }}</td><td class="connection-break">{{ item.group || '—' }}</td><td class="text-orange">{{ bytes(item.upload) }}</td><td class="text-green">{{ bytes(item.download) }}</td><td>{{ bytes(item.total) }}</td><td>{{ bytes(item.quota) }}</td><td><v-icon :color="item.online ? 'success' : 'disabled'" icon="mdi-circle" size="small" /></td>
                 <td><v-btn size="small" variant="text" prepend-icon="mdi-text-search" @click="openConnections('user', item.user)">{{ $t('analytics.details') }}</v-btn></td>
               </tr>
             </tbody>
           </v-table>
+          </div>
         </v-window-item>
         <v-window-item value="stats">
           <v-card variant="outlined" class="mt-4"><v-card-text style="height: 420px"><Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" /><v-alert v-else type="info" variant="tonal">{{ $t('analytics.noTraffic') }}</v-alert></v-card-text></v-card>
@@ -42,25 +44,35 @@
             <v-col v-for="group in connectionGroups" :key="group.key" cols="12" md="6">
               <v-card variant="outlined" height="100%">
                 <v-card-title>{{ group.title }}</v-card-title>
-                <v-table density="compact" hover>
+                <div class="analytics-table-scroll">
+                <v-table density="compact" hover class="connection-group-table">
                   <thead><tr><th>{{ $t('analytics.tag') }}</th><th>{{ $t('analytics.count') }}</th><th>{{ $t('analytics.lastSeen') }}</th><th>{{ $t('actions.action') }}</th></tr></thead>
                   <tbody>
                     <tr v-for="item in group.items" :key="`${group.key}-${item.tag}`">
-                      <td>{{ item.tag }}</td><td>{{ item.count }}</td><td>{{ formatTime(item.lastSeen) }}</td>
+                      <td class="connection-break">{{ item.tag }}</td><td>{{ item.count }}</td><td class="text-no-wrap">{{ formatTime(item.lastSeen) }}</td>
                       <td><v-btn size="small" variant="text" @click="openConnections(item.resource || group.resource, item.tag)">{{ $t('analytics.details') }}</v-btn></td>
                     </tr>
                     <tr v-if="!group.items.length"><td colspan="4" class="text-medium-emphasis">{{ $t('analytics.noConnections') }}</td></tr>
                   </tbody>
                 </v-table>
+                </div>
               </v-card>
             </v-col>
           </v-row>
-          <v-table density="compact" hover class="mt-4">
+          <div class="analytics-table-scroll mt-4">
+          <v-table density="compact" hover class="connection-list-table">
+            <colgroup>
+              <col class="connection-list-time">
+              <col class="connection-list-resource">
+              <col class="connection-list-user">
+              <col class="connection-list-destination">
+              <col class="connection-list-action">
+            </colgroup>
             <thead><tr><th>{{ $t('logsView.time') }}</th><th>{{ $t('analytics.resource') }}</th><th>{{ $t('analytics.user') }}</th><th>{{ $t('analytics.destination') }}</th><th>{{ $t('analytics.event') }}</th></tr></thead>
             <tbody>
               <tr v-for="(item, index) in connectionItems" :key="`${item.timestamp}-${index}`">
-                <td>{{ item.time || formatTime(item.timestamp) }}</td><td>{{ item.resource }}/{{ item.protocol }}[{{ item.tag }}]</td><td>{{ item.user || '—' }}</td>
-                <td>
+                <td class="text-no-wrap">{{ item.time || formatTime(item.timestamp) }}</td><td class="connection-break">{{ item.resource }}/{{ item.protocol }}[{{ item.tag }}]</td><td class="connection-break">{{ item.user || '—' }}</td>
+                <td class="connection-break">
                   <div>{{ item.destination || item.source || '—' }}</div>
                   <div v-if="connectionMeta(item)" class="text-caption text-medium-emphasis">{{ connectionMeta(item) }}</div>
                 </td>
@@ -68,17 +80,26 @@
               </tr>
             </tbody>
           </v-table>
+          </div>
         </v-window-item>
         <v-window-item value="logs">
           <v-alert type="info" variant="tonal" class="my-3">{{ $t('logsView.subtitle') }}</v-alert>
           <v-alert v-if="!loading && logItems.length === 0" type="info" variant="tonal">{{ $t('logsView.noLogs') }}</v-alert>
-          <v-table v-else density="compact" hover fixed-header height="calc(100vh - 330px)">
+          <div v-else class="analytics-table-scroll">
+          <v-table density="compact" hover fixed-header height="calc(100vh - 330px)" class="logs-table">
+            <colgroup>
+              <col class="logs-col-time">
+              <col class="logs-col-level">
+              <col class="logs-col-user">
+              <col class="logs-col-source">
+              <col class="logs-col-message">
+            </colgroup>
             <thead><tr><th>{{ $t('logsView.time') }}</th><th>{{ $t('logsView.level') }}</th><th>{{ $t('logsView.user') }}</th><th>{{ $t('logsView.source') }}</th><th>{{ $t('logsView.message') }}</th></tr></thead>
             <tbody>
               <tr v-for="(item, index) in logItems" :key="`${item.timestamp}-${index}`">
                 <td class="text-no-wrap">{{ item.time || formatTime(item.timestamp) }}</td>
                 <td><v-chip size="small" :color="levelColor(item.level)" variant="tonal">{{ item.level }}</v-chip></td>
-                <td>{{ item.user || '—' }}</td><td>{{ item.source || 'system' }}</td>
+                <td class="connection-break">{{ item.user || '—' }}</td><td class="connection-break">{{ item.source || 'system' }}</td>
                 <td class="log-message">
                   <div>{{ item.message }}</div>
                   <div v-if="connectionMeta(item.connection)" class="text-caption text-medium-emphasis">{{ connectionMeta(item.connection) }}</div>
@@ -86,6 +107,7 @@
               </tr>
             </tbody>
           </v-table>
+          </div>
         </v-window-item>
       </v-window>
     </v-card-text>
@@ -165,14 +187,14 @@
       <v-card-text v-if="selectedConnection">
         <v-row density="compact">
           <v-col cols="12" md="6"><strong>{{ $t('logsView.time') }}:</strong> {{ selectedConnection.time || formatTime(selectedConnection.timestamp) }}</v-col>
-          <v-col cols="12" md="6"><strong>{{ $t('analytics.resource') }}:</strong> {{ selectedConnection.resource }}/{{ selectedConnection.protocol }}[{{ selectedConnection.tag }}]</v-col>
-          <v-col cols="12" md="6"><strong>{{ $t('analytics.user') }}:</strong> {{ selectedConnection.user || '—' }}</v-col>
-          <v-col cols="12" md="6"><strong>{{ $t('analytics.destination') }}:</strong> {{ selectedConnection.destination || '—' }}</v-col>
-          <v-col cols="12" md="6"><strong>{{ $t('analytics.source') }}:</strong> {{ selectedConnection.source || '—' }}</v-col>
+          <v-col cols="12" md="6" class="connection-break"><strong>{{ $t('analytics.resource') }}:</strong> {{ selectedConnection.resource }}/{{ selectedConnection.protocol }}[{{ selectedConnection.tag }}]</v-col>
+          <v-col cols="12" md="6" class="connection-break"><strong>{{ $t('analytics.user') }}:</strong> {{ selectedConnection.user || '—' }}</v-col>
+          <v-col cols="12" md="6" class="connection-break"><strong>{{ $t('analytics.destination') }}:</strong> {{ selectedConnection.destination || '—' }}</v-col>
+          <v-col cols="12" md="6" class="connection-break"><strong>{{ $t('analytics.source') }}:</strong> {{ selectedConnection.source || '—' }}</v-col>
         </v-row>
         <v-row v-for="section in endpointSections(selectedConnection)" :key="section.title" density="compact" class="mt-3">
           <v-col cols="12" class="text-subtitle-2">{{ section.title }}</v-col>
-          <v-col v-for="field in section.fields" :key="field.label" cols="12" md="6"><strong>{{ field.label }}:</strong> {{ field.value }}</v-col>
+          <v-col v-for="field in section.fields" :key="field.label" cols="12" md="6" class="connection-break"><strong>{{ field.label }}:</strong> {{ field.value }}</v-col>
         </v-row>
         <v-divider class="my-4" />
         <div class="text-medium-emphasis mb-2">{{ $t('logsView.message') }}</div>
@@ -348,7 +370,28 @@ onMounted(load)
 </script>
 
 <style scoped>
-.log-message { white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.analytics-content { min-width: 0; overflow: hidden; }
+.analytics-table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.analytics-table-scroll :deep(.v-table__wrapper) { overflow-x: visible; }
+.usage-table :deep(table) { min-width: 920px; }
+.connection-group-table :deep(table) { min-width: 520px; table-layout: fixed; }
+.connection-group-table :deep(th:nth-child(1)) { width: 42%; }
+.connection-group-table :deep(th:nth-child(2)) { width: 12%; }
+.connection-group-table :deep(th:nth-child(3)) { width: 28%; }
+.connection-group-table :deep(th:nth-child(4)) { width: 18%; }
+.connection-list-table :deep(table) { min-width: 900px; table-layout: fixed; }
+.connection-list-time { width: 170px; }
+.connection-list-resource { width: 210px; }
+.connection-list-user { width: 130px; }
+.connection-list-destination { width: 290px; }
+.connection-list-action { width: 100px; }
+.logs-table :deep(table) { min-width: 920px; table-layout: fixed; }
+.logs-col-time { width: 170px; }
+.logs-col-level { width: 90px; }
+.logs-col-user { width: 130px; }
+.logs-col-source { width: 170px; }
+.logs-col-message { width: 360px; }
+.log-message { min-width: 0; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .cursor-pointer { cursor: pointer; }
 .connection-detail-scroll { max-height: min(65vh, 560px); overflow: auto; }
 .connection-detail-table :deep(table) { min-width: 1040px; table-layout: fixed; }
@@ -363,7 +406,7 @@ onMounted(load)
 .connection-col-user { width: 100px; }
 .connection-col-endpoint { width: 190px; }
 .connection-col-message { width: 278px; }
-.connection-break { overflow-wrap: anywhere; word-break: break-word; }
+.connection-break { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .connection-message {
   display: -webkit-box;
   overflow: hidden;

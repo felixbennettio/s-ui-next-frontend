@@ -4,6 +4,7 @@
     :visible="modal.visible"
     :id="modal.id"
     :data="modal.data"
+    :initial-type="modal.type"
     :tags="endpointTags"
     @close="closeModal"
   />
@@ -22,21 +23,31 @@
   />
   <v-row>
     <v-col cols="12" justify="center" align="center">
-      <v-btn color="primary" @click="showModal(0)">{{ $t('actions.add') }}</v-btn>
+      <v-menu>
+        <template #activator="{ props }">
+          <v-btn v-bind="props" color="primary" prepend-icon="mdi-plus">{{ $t('actions.add') }}</v-btn>
+        </template>
+        <v-list>
+          <v-list-item prepend-icon="mdi-vpn" title="WireGuard" @click="showModal(0, 'wireguard')" />
+          <v-list-item prepend-icon="mdi-cloud-outline" title="Cloudflare WARP" @click="showModal(0, 'warp')" />
+          <v-list-item prepend-icon="mdi-lan-connect" title="Tailscale" @click="showModal(0, 'tailscale')" />
+        </v-list>
+      </v-menu>
     </v-col>
   </v-row>
   <v-row>
     <v-col cols="12" sm="4" md="3" lg="2" v-for="(item, index) in <any[]>endpoints" :key="item.tag">
-      <v-card rounded="xl" elevation="5" min-width="200" :title="item.tag">
+      <v-card rounded="lg" elevation="5" min-width="200">
+        <v-card-title class="text-truncate" :title="item.tag">{{ item.tag }}</v-card-title>
         <v-card-subtitle style="margin-top: -15px;">
           <v-row>
-            <v-col>{{ item.type }}</v-col>
+            <v-col class="endpoint-value">{{ item.type }}</v-col>
           </v-row>
         </v-card-subtitle>
         <v-card-text>
           <v-row>
             <v-col>{{ $t('in.addr') }}</v-col>
-            <v-col>
+            <v-col class="endpoint-value">
               {{ item.address?.length>0 ? item.address[0] : '-' }}
             </v-col>
           </v-row>
@@ -88,7 +99,7 @@
           </v-overlay>
           <v-icon
           class="me-2"
-          v-if="item.type == 'wireguard' && item.peers?.length>0"
+          v-if="item.type == 'wireguard' && hasExportablePeer(item)"
           @click="showQrCode(item.id)"
         >
           mdi-qrcode
@@ -127,13 +138,15 @@ const modal = ref({
   visible: false,
   id: 0,
   data: "",
+  type: "wireguard",
 })
 
 const delOverlay = ref(new Array<boolean>)
 
-const showModal = (id: number) => {
+const showModal = (id: number, type = "wireguard") => {
   modal.value.id = id
   modal.value.data = id == 0 ? '' : JSON.stringify(endpoints.value.findLast(o => o.id == id))
+  modal.value.type = type
   modal.value.visible = true
 }
 
@@ -170,7 +183,24 @@ const showQrCode = (id: number) => {
   qrcode.value.data = endpoints.value.findLast(o => o.id == id)
   qrcode.value.visible = true
 }
+const hasExportablePeer = (item: any) => {
+  const exportEnabled = item.client_export_enabled ?? Boolean(item.advertised_endpoint_host)
+  if (!exportEnabled) return false
+  return (item.peers || []).some((peer: any) => {
+    if (peer.peer_key_mode === 'existing_peer') return false
+    if (peer.client_private_key || peer.client_private_key_set) return true
+    return (item.ext?.keys || []).some((key: any) => key.public_key === peer.public_key)
+  })
+}
 const closeQrCode = () => {
   qrcode.value.visible = false
 }
 </script>
+
+<style scoped>
+.endpoint-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+</style>

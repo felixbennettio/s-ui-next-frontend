@@ -23,9 +23,10 @@
         </v-col>
         <v-col cols="12" md="6"><v-text-field v-model="serverIPv4" :label="$t('types.wg.serverIpv4')" hint="/32" persistent-hint /></v-col>
         <v-col cols="12" md="6"><v-text-field v-model="serverIPv6" :label="$t('types.wg.serverIpv6')" hint="/128" persistent-hint /></v-col>
-        <v-col cols="12" md="6"><v-text-field v-model="data.tunnel_ipv4_cidr" :label="$t('types.wg.tunnelIpv4')" hint="10.66.66.0/24" persistent-hint /></v-col>
-        <v-col cols="12" md="6"><v-text-field v-model="data.tunnel_ipv6_cidr" :label="$t('types.wg.tunnelIpv6')" hint="fd66:66:66::/64" persistent-hint /></v-col>
-        <v-col cols="12" sm="6" md="4"><v-text-field v-model.number="data.listen_port" :label="$t('types.wg.listenPort')" type="number" min="1" max="65535" /></v-col>
+        <v-col cols="12" md="6"><v-text-field v-model="data.tunnel_ipv4_cidr" :label="$t('types.wg.tunnelIpv4')" :hint="$t('types.wg.tunnelOptional')" persistent-hint /></v-col>
+        <v-col cols="12" md="6"><v-text-field v-model="data.tunnel_ipv6_cidr" :label="$t('types.wg.tunnelIpv6')" :hint="$t('types.wg.tunnelOptional')" persistent-hint /></v-col>
+        <v-col cols="12" sm="6" md="4"><v-switch v-model="listenEnabled" color="primary" :label="$t('types.wg.listenEnabled')" /></v-col>
+        <v-col v-if="listenEnabled" cols="12" sm="6" md="4"><v-text-field v-model.number="data.listen_port" :label="$t('types.wg.listenPort')" type="number" min="1" max="65535" /></v-col>
         <v-col cols="12" sm="6" md="4"><v-text-field v-model.number="data.mtu" label="MTU" type="number" min="576" /></v-col>
         <v-col cols="12" sm="6" md="4"><v-text-field v-model.number="udpTimeout" :label="$t('types.wg.udpTimeout')" type="number" min="0" :suffix="$t('date.m')" /></v-col>
       </v-row>
@@ -33,8 +34,12 @@
   </v-card>
 
   <v-card variant="outlined" class="mb-3">
-    <v-card-title>{{ $t('types.wg.clientExportSection') }}</v-card-title>
-    <v-card-text>
+    <v-card-title class="d-flex align-center flex-wrap ga-2">
+      <span>{{ $t('types.wg.clientExportSection') }}</span>
+      <v-spacer />
+      <v-switch v-model="data.client_export_enabled" color="primary" hide-details class="flex-shrink-0" :label="$t('types.wg.clientExportEnabled')" />
+    </v-card-title>
+    <v-card-text v-if="data.client_export_enabled">
       <v-alert type="warning" variant="tonal" class="mb-3" :text="$t('types.wg.advertisedEndpointHelp')" />
       <v-row>
         <v-col cols="12" md="8"><v-text-field v-model="data.advertised_endpoint_host" :label="$t('types.wg.advertisedHost')" /></v-col>
@@ -60,16 +65,24 @@
   </v-card>
 
   <v-card variant="outlined" v-if="data.peers">
-    <v-card-title class="d-flex align-center">
+    <v-card-title class="d-flex align-center flex-wrap ga-2">
       {{ $t('types.wg.peers') }}
       <v-spacer />
-      <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" @click="addPeer">{{ $t('actions.add') }}</v-btn>
+      <v-menu>
+        <template #activator="{ props }">
+          <v-btn v-bind="props" color="primary" variant="tonal" prepend-icon="mdi-plus">{{ $t('actions.add') }}</v-btn>
+        </template>
+        <v-list>
+          <v-list-item prepend-icon="mdi-laptop" :title="$t('types.wg.addGeneratedClient')" :subtitle="$t('types.wg.addGeneratedClientHelp')" @click="addPeer('generated_client')" />
+          <v-list-item prepend-icon="mdi-server-network" :title="$t('types.wg.addExistingPeer')" :subtitle="$t('types.wg.addExistingPeerHelp')" @click="addPeer('existing_peer')" />
+        </v-list>
+      </v-menu>
     </v-card-title>
     <v-card-text>
       <v-alert v-if="data.peers.length === 0" type="info" variant="tonal" :text="$t('types.wg.noPeers')" />
       <v-card v-for="(peer, index) in data.peers" :key="peer.public_key || index" variant="tonal" class="mb-3">
         <v-card-title class="d-flex align-center">
-          {{ peer.name || ($t('types.wg.peer') + ' ' + (Number(index) + 1)) }}
+          <span class="text-truncate">{{ peer.name || ($t('types.wg.peer') + ' ' + (Number(index) + 1)) }}</span>
           <v-spacer />
           <v-btn icon="mdi-delete-outline" color="error" variant="text" @click="delPeer(Number(index))" />
         </v-card-title>
@@ -88,7 +101,7 @@ export default {
   created() { this.ensureDefaults() },
   methods: {
     ensureDefaults() {
-      this.data.wireguard_schema = 3
+      this.data.wireguard_schema = 4
       this.data.system ??= false
       this.data.peer_to_peer_enabled ??= false
       this.data.hub_peer_forwarding_enabled ??= this.data.peer_to_peer_enabled
@@ -100,9 +113,10 @@ export default {
       this.data.default_client_dns ??= []
       this.data.default_client_mtu ??= this.data.mtu || 1420
       this.data.default_client_keepalive ??= 25
+      this.data.client_export_enabled ??= Boolean(this.data.advertised_endpoint_host || this.data.advertised_endpoint_port)
       this.data.advertised_endpoint_port ||= this.data.listen_port
     },
-    addPeer() { this.$emit('addPeer') },
+    addPeer(kind: string) { this.$emit('addPeer', kind) },
     delPeer(index: number) { this.$emit('delPeer', index) },
     refreshPeerKey(index: number) { this.$emit('refreshPeerKey', index) },
     newKey() { this.$emit('newWgKey') },
@@ -138,6 +152,12 @@ export default {
     interfaceName: {
       get() { return this.data.name || '' },
       set(value: string) { this.data.name = value.trim() || undefined },
+    },
+    listenEnabled: {
+      get() { return Number(this.data.listen_port || 0) > 0 },
+      set(value: boolean) {
+        this.data.listen_port = value ? Number(this.data.advertised_endpoint_port || 51820) : 0
+      },
     },
     udpTimeout: {
       get() { return this.data.udp_timeout ? parseInt(String(this.data.udp_timeout).replace('m', '')) : 5 },

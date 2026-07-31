@@ -18,6 +18,7 @@ export interface WgPeer {
   name?: string
   peer_mode?: 'roaming_client' | 'static_peer' | 'site_to_site'
   peer_role?: 'client' | 'fixed_node' | 'site_gateway'
+  peer_key_mode?: 'generated_client' | 'existing_peer'
   remote_endpoint_mode?: 'dynamic' | 'static'
   address?: string
   port?: number
@@ -29,6 +30,8 @@ export interface WgPeer {
   pre_shared_key_clear?: boolean
   allowed_ips?: string[]
   server_allowed_ips?: string[]
+  runtime_allowed_ips?: string[]
+  runtime_route_preset?: 'peer_addresses' | 'remote_networks' | 'custom' | 'full_tunnel'
   assigned_ipv4?: string
   assigned_ipv6?: string
   client_private_key?: string
@@ -59,6 +62,7 @@ export interface WireGuard extends EndpointBasics, Dial {
   tunnel_ipv6_cidr?: string
   advertised_endpoint_host?: string
   advertised_endpoint_port?: number
+  client_export_enabled?: boolean
   peer_to_peer_enabled?: boolean
   hub_peer_forwarding_enabled?: boolean
   default_client_allowed_ips?: string[]
@@ -71,7 +75,9 @@ export interface WireGuard extends EndpointBasics, Dial {
   ext: any
 }
 
-export interface Warp extends WireGuard {}
+export interface Warp extends WireGuard {
+  warp_terms_accepted?: boolean
+}
 
 export interface Tailscale extends EndpointBasics, Dial {
   state_directory?: string
@@ -107,12 +113,13 @@ export type Endpoint = InterfaceMap[keyof InterfaceMap]
 const defaultValues: Record<EpType, Endpoint> = {
   wireguard: {
     type: EpTypes.Wireguard,
-    wireguard_schema: 3,
+    wireguard_schema: 4,
     address: ['10.66.66.1/32', 'fd66:66:66::1/128'],
     tunnel_ipv4_cidr: '10.66.66.0/24',
     tunnel_ipv6_cidr: 'fd66:66:66::/64',
     advertised_endpoint_host: '',
     advertised_endpoint_port: 0,
+    client_export_enabled: true,
     peer_to_peer_enabled: false,
     hub_peer_forwarding_enabled: false,
     default_client_allowed_ips: ['10.66.66.0/24', 'fd66:66:66::/64'],
@@ -125,11 +132,12 @@ const defaultValues: Record<EpType, Endpoint> = {
     peers: [],
     ext: { keys: [] },
   },
-  warp: { type: EpTypes.Warp, address: [], private_key: '', listen_port: 0, mtu: 1420, peers: [{ address: '', port: 0, public_key: '', pre_shared_key: '', reserved: [], allowed_ips: [] }] },
+  warp: { type: EpTypes.Warp, address: [], private_key: '', listen_port: 0, mtu: 1280, system: false, warp_terms_accepted: false, peers: [{ address: '', port: 0, public_key: '', pre_shared_key: '', reserved: [], allowed_ips: [] }], ext: {} },
   tailscale: { type: EpTypes.Tailscale, domain_resolver: 'local' },
 }
 
 export function createEndpoint<T extends Endpoint>(type: string,json?: Partial<T>): Endpoint {
-  const defaultObject: Endpoint = { ...defaultValues[type], ...(json || {}) }
+  const defaults = JSON.parse(JSON.stringify(defaultValues[type] || { type }))
+  const defaultObject: Endpoint = { ...defaults, ...(json || {}) }
   return defaultObject
 }
