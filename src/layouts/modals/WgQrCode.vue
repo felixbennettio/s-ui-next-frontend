@@ -9,6 +9,7 @@
         </v-row>
       </v-card-title>
       <v-divider></v-divider>
+      <v-alert v-if="!loading && wgLinks.length === 0" type="info" variant="tonal" class="ma-3" :text="$t('types.wg.noExportablePeers')" />
       <v-row v-for="item in wgLinks" :key="item.filename">
         <v-col style="text-align: center;" v-if="item.config.length>0">
           <v-chip>{{ item.name }}</v-chip> <v-icon icon="mdi-download" @click="download(item.config, item.filename)" /><br />
@@ -41,6 +42,9 @@ export default {
       this.wgLinks = []
       this.loading = true
       for (let index = 0; index < (this.wgData.peers || []).length; index++) {
+        const peer = this.wgData.peers[index]
+        const hasLegacyKey = (this.wgData.ext?.keys || []).some((key: any) => key.public_key === peer.public_key)
+        if (peer.peer_key_mode === 'existing_peer' || (!peer.client_private_key && !peer.client_private_key_set && !hasLegacyKey)) continue
         const response = await HttpUtils.post('api/wireguardExport', { tag: this.wgData.tag, peerIndex: index })
         if (response.success && response.obj?.config) this.wgLinks.push(response.obj)
       }

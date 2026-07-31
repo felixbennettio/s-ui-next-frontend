@@ -38,6 +38,7 @@
         <v-btn
           color="primary"
           variant="outlined"
+          :disabled="loading"
           @click="closeModal"
         >
           {{ $t('actions.close') }}
@@ -46,6 +47,7 @@
           color="primary"
           variant="outlined"
           :loading="loading"
+          :disabled="loading"
           @click="saveChanges(false)"
         >
           {{ $t('actions.save') }}
@@ -54,6 +56,7 @@
           color="primary"
           variant="tonal"
           :loading="loading"
+          :disabled="loading"
           @click="saveChanges(true)"
         >
           {{ $t('actions.saveApply') }}
@@ -128,7 +131,7 @@ function canonicalHostPrefix(value: string): string {
 }
 
 export default {
-  props: ['visible', 'data', 'id', 'tags'],
+  props: ['visible', 'data', 'id', 'tags', 'initialType'],
   emits: ['close'],
   data() {
     return {
@@ -147,7 +150,7 @@ export default {
         this.title = "edit"
       }
       else {
-        this.endpoint.type = "wireguard"
+        this.endpoint.type = this.$props.initialType || "wireguard"
         this.endpoint.listen_port = RandomUtil.randomIntRange(10000, 60000)
         this.changeType()
         this.title = "add"
@@ -166,13 +169,14 @@ export default {
           const listenPort = this.endpoint.listen_port ?? RandomUtil.randomIntRange(10000, 60000)
           prevConfig = {
             tag: tag,
-            wireguard_schema: 3,
+            wireguard_schema: 4,
             listen_port: listenPort,
             address: ['10.66.66.1/32', 'fd66:66:66::1/128'],
             tunnel_ipv4_cidr: '10.66.66.0/24',
             tunnel_ipv6_cidr: 'fd66:66:66::/64',
             advertised_endpoint_host: '',
             advertised_endpoint_port: listenPort,
+            client_export_enabled: true,
             peer_to_peer_enabled: false,
             hub_peer_forwarding_enabled: false,
             default_client_allowed_ips: ['10.66.66.0/24', 'fd66:66:66::/64'],
@@ -192,6 +196,7 @@ export default {
         case EpTypes.Warp:
           prevConfig = {
             tag: tag,
+            warp_terms_accepted: false,
           }
           break
         case EpTypes.Tailscale:
@@ -201,11 +206,10 @@ export default {
       this.endpoint = createEndpoint(this.endpoint.type, prevConfig)
     },
     closeModal() {
-      this.updateData(0) // reset
       this.$emit('close')
     },
     async saveChanges(apply = true) {
-      if (!this.$props.visible) return
+      if (!this.$props.visible || this.loading) return
       
       // check duplicate tag
       const isDuplicatedTag = Data().checkTag("endpoint",this.endpoint.id, this.endpoint.tag)
@@ -213,9 +217,12 @@ export default {
 
       // save data
       this.loading = true
-      const success = await Data().save("endpoints", this.$props.id == 0 ? "new" : "edit", this.endpoint, undefined, apply)
-      if (success) this.closeModal()
-      this.loading = false
+      try {
+        const success = await Data().save("endpoints", this.$props.id == 0 ? "new" : "edit", this.endpoint, undefined, apply)
+        if (success) this.closeModal()
+      } finally {
+        this.loading = false
+      }
     },
     async genWgKey(){
       this.loading = true
@@ -255,11 +262,31 @@ export default {
       }
       this.loading = false
     },
-    async addWgPeer(){
+    async addWgPeer(kind = 'generated_client'){
       if (this.endpoint.type != EpTypes.Wireguard) return
-      this.loading = true
-      const newKeys = await this.genWgKey()
       if (!this.endpoint.ext) this.endpoint.ext = {keys: []}
+      if (kind === 'existing_peer') {
+        if (!(this.endpoint.peers || []).some((peer: any) => peer.peer_key_mode === 'generated_client')) {
+          this.endpoint.client_export_enabled = false
+        }
+        this.endpoint.peers.push({
+          name: this.$t('types.wg.peer') + ' ' + (this.endpoint.peers.length + 1),
+          peer_mode: 'static_peer',
+          peer_role: 'fixed_node',
+          peer_key_mode: 'existing_peer',
+          remote_endpoint_mode: 'dynamic',
+          public_key: '',
+          runtime_route_preset: 'custom',
+          runtime_allowed_ips: [],
+          server_allowed_ips: [],
+          allowed_ips: [],
+          persistent_keepalive_interval: 25,
+        })
+        return
+      }
+      this.loading = true
+      this.endpoint.client_export_enabled = true
+      const newKeys = await this.genWgKey()
       this.endpoint.ext.keys.push(newKeys)
       const assignedIPv4 = this.findFreeIP(false)
       const assignedIPv6 = this.findFreeIP(true)
@@ -267,6 +294,7 @@ export default {
         name: this.$t('types.wg.peer') + ' ' + (this.endpoint.peers.length + 1),
         peer_mode: 'roaming_client',
         peer_role: 'client',
+        peer_key_mode: 'generated_client',
         remote_endpoint_mode: 'dynamic',
         public_key: newKeys.public_key,
         client_private_key: newKeys.private_key,
@@ -274,6 +302,8 @@ export default {
         assigned_ipv6: assignedIPv6,
         server_allowed_ips: [assignedIPv4, assignedIPv6],
         allowed_ips: [assignedIPv4, assignedIPv6],
+        runtime_route_preset: 'peer_addresses',
+        runtime_allowed_ips: [assignedIPv4, assignedIPv6],
         client_route_preset: 'virtual_network',
         client_allowed_ips: [this.endpoint.tunnel_ipv4_cidr, this.endpoint.tunnel_ipv6_cidr].filter(Boolean),
         client_dns: [...(this.endpoint.default_client_dns || [])],

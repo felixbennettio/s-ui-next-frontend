@@ -131,8 +131,14 @@ const Data = defineStore('Data', {
         default:
           return false
       }
-      const oldObject = id > 0 ? objects.findLast((i: any) => i.id == id) : null
-      if (tag != oldObject?.tag && objects.findIndex((i: any) => i.tag == tag) != -1) {
+      const normalizedTag = String(tag || '').trim()
+      const duplicateInObject = objects.some((item: any) => item.id != id && item.tag == normalizedTag)
+      const duplicateAcrossEgress = object === 'endpoint'
+        ? this.outbounds.some((item: any) => item.tag == normalizedTag)
+        : object === 'outbound'
+          ? this.endpoints.some((item: any) => item.tag == normalizedTag)
+          : false
+      if (duplicateInObject || duplicateAcrossEgress) {
         push.error({
           message: i18n.global.t('error.dplData') + ": " + i18n.global.t('objects.tag')
         })

@@ -12,17 +12,26 @@
         <v-col cols="12" md="1" class="d-flex align-center"><v-btn block color="primary" @click="load">{{ $t('logsView.apply') }}</v-btn></v-col>
       </v-row>
       <v-alert v-if="!loading && items.length === 0" type="info" variant="tonal">{{ $t('logsView.noLogs') }}</v-alert>
-      <v-table v-else density="compact" hover fixed-header height="calc(100vh - 260px)">
+      <div v-else class="logs-table-scroll">
+      <v-table density="compact" hover fixed-header height="calc(100vh - 260px)" class="logs-table">
+        <colgroup>
+          <col class="logs-col-time">
+          <col class="logs-col-level">
+          <col class="logs-col-user">
+          <col class="logs-col-source">
+          <col class="logs-col-message">
+        </colgroup>
         <thead><tr><th>{{ $t('logsView.time') }}</th><th>{{ $t('logsView.level') }}</th><th>{{ $t('logsView.user') }}</th><th>{{ $t('logsView.source') }}</th><th>{{ $t('logsView.message') }}</th></tr></thead>
         <tbody>
           <tr v-for="(item, index) in items" :key="`${item.timestamp}-${index}`">
             <td class="text-no-wrap">{{ item.time || formatTime(item.timestamp) }}</td>
             <td><v-chip size="small" :color="levelColor(item.level)" variant="tonal">{{ item.level }}</v-chip></td>
-            <td>{{ item.user || '—' }}</td><td>{{ item.source || 'system' }}</td>
+            <td class="log-break">{{ item.user || '—' }}</td><td class="log-break">{{ item.source || 'system' }}</td>
             <td class="log-message">{{ item.message }}</td>
           </tr>
         </tbody>
       </v-table>
+      </div>
     </v-card-text>
   </v-card>
 </template>
@@ -51,4 +60,16 @@ const formatTime = (value: number) => value ? new Date(value * 1000).toLocaleStr
 onMounted(load)
 </script>
 
-<style scoped>.log-message { white-space: pre-wrap; overflow-wrap: anywhere; font-family: monospace; }</style>
+<style scoped>
+.logs-table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.logs-table-scroll :deep(.v-table__wrapper) { overflow-x: visible; }
+.logs-table :deep(table) { min-width: 920px; table-layout: fixed; }
+.logs-col-time { width: 170px; }
+.logs-col-level { width: 90px; }
+.logs-col-user { width: 130px; }
+.logs-col-source { width: 170px; }
+.logs-col-message { width: 360px; }
+.log-break,
+.log-message { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.log-message { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>

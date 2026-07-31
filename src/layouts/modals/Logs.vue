@@ -11,7 +11,7 @@
         </v-row>
       </v-card-title>
       <v-divider></v-divider>
-      <v-card-text>
+      <v-card-text class="log-dialog-content">
         <v-row>
           <v-col cols="12" sm="6" md="4">
             <v-select
@@ -95,6 +95,7 @@ export default {
 </script>
 
 <style scoped>
-.log-lines { max-height: 60vh; overflow: auto; padding: 12px; background: rgb(var(--v-theme-surface-variant)); }
-.log-line { white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.log-dialog-content { min-width: 0; overflow: hidden; }
+.log-lines { width: 100%; max-width: 100%; max-height: 60vh; overflow: auto; padding: 12px; background: rgb(var(--v-theme-surface-variant)); }
+.log-line { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 </style>
