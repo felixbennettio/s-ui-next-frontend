@@ -210,6 +210,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from 'chart.js'
 import HttpUtils from '@/plugins/httputil'
+import { logLevelColor as levelColor } from '@/plugins/logs'
 import { HumanReadable } from '@/plugins/utils'
 import { i18n } from '@/locales'
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
@@ -278,7 +279,7 @@ const connectionGroups = computed(() => {
 const chartOptions: any = { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, scales: { y: { beginAtZero: true, ticks: { callback: (value: any) => bytes(value) } } } }
 const bytes = (value: any) => HumanReadable.sizeFormat(Number(value || 0))
 const formatTime = (value: number) => value ? new Date(value * 1000).toLocaleString() : '—'
-const levelColor = (value: string) => ({ DEBUG: 'secondary', INFO: 'info', WARNING: 'warning', ERROR: 'error' } as any)[value] ?? 'default'
+
 const endpointTarget = (info: any) => info?.host || info?.ip || info?.address || ''
 const endpointOwnership = (info: any) => {
   if (!info) return ''

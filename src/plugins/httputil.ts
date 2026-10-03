@@ -4,16 +4,11 @@ import router from '@/router'
 import { push } from 'notivue'
 import type { AxiosRequestConfig } from 'axios'
 
-export interface Msg {
-  success: boolean
-  msg: string
-  obj: any | null
-}
+import { normalizeResponse, type Msg } from './response'
+export type { Msg } from './response'
 
-function _handleMsg(msg: any): void {
-  if (!isMsg(msg)) {
-    return
-  }
+function _handleMsg(msg: Msg): void {
+  if (msg.warning) push.warning({ message: i18n.global.t('feedback.' + msg.warning) })
   if(msg.msg){
     if (!msg.success && msg.msg == "Invalid login") {
       push.error({
@@ -42,31 +37,12 @@ export const logout = async () => {
   }
 }
 
-function _respToMsg(resp: any): Msg {
-  const data = resp.data
-  if (data == null) {
-    return { success: true, msg: "", obj: null }
-  } else if (isMsg(data)) {
-    if (Object.hasOwn(data, 'success')) {
-        return { success: data.success, msg: data.msg, obj: data.obj ?? null }
-    } else {
-        return data
-    }
-  } else {
-    return { success: false, msg: `unknown data: ${data}`, obj: null }
-  }
-}
-
-function isMsg(obj: any): obj is Msg {
-  return Object.hasOwn(obj,'success') && Object.hasOwn(obj,'msg') && Object.hasOwn(obj, 'obj')
-}
-  
 const HttpUtils = {
   async get(url: string, data: object = {}, options: AxiosRequestConfig = {}): Promise<Msg> {
     let msg: Msg
     try {
         const resp = await api.get(url, { params: data, ...options })
-        msg = _respToMsg(resp)
+        msg = normalizeResponse(resp.data)
     } catch (e: any) {
         msg = { success: false, msg: e.toString(), obj: null }
     }
@@ -77,7 +53,7 @@ const HttpUtils = {
     let msg: Msg
     try {
         const resp = await api.post(url, data, options)
-        msg = _respToMsg(resp)
+        msg = normalizeResponse(resp.data)
     } catch (e: any) {
         msg = { success: false, msg: e.toString(), obj: null }
     }

@@ -22,9 +22,7 @@
 
 <script lang="ts">
 import QrcodeVue from 'qrcode.vue'
-import Clipboard from 'clipboard'
-import { i18n } from '@/locales'
-import { push } from 'notivue'
+import { copyToClipboard } from '@/plugins/copy'
 import HttpUtils from '@/plugins/httputil'
 
 export default {
@@ -50,36 +48,7 @@ export default {
       }
       this.loading = false
     },
-    copyToClipboard(txt:string) {
-      const hiddenButton = document.createElement('button')
-      hiddenButton.className = 'clipboard-btn'
-      document.body.appendChild(hiddenButton)
-
-      const clipboard = new Clipboard('.clipboard-btn', {
-        text: () => txt,
-        container: document.getElementById('qrcode-modal')?? undefined
-      });
-
-      clipboard.on('success', () => {
-        clipboard.destroy()
-        push.success({
-          message: i18n.global.t('success') + ": " + i18n.global.t('copyToClipboard'),
-          duration: 5000,
-        })
-      })
-
-      clipboard.on('error', () => {
-        clipboard.destroy()
-        push.error({
-          message: i18n.global.t('failed') + ": " + i18n.global.t('copyToClipboard'),
-          duration: 5000,
-        })
-      })
-
-      // Perform click on hidden button to trigger copy
-      hiddenButton.click()
-      document.body.removeChild(hiddenButton)
-    },
+    copyToClipboard,
     download(text: string, filename: string) {
       const element = document.createElement('a');
       element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));

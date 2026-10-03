@@ -254,7 +254,8 @@ const save = async () => {
       duration: 5000,
       message: i18n.global.t('actions.set') + " " + i18n.global.t('pages.settings')
     })
-    setData(msg.obj.settings)
+    if (msg.obj?.settings) setData(msg.obj.settings)
+    else await loadData()
   }
   loading.value = false
 }

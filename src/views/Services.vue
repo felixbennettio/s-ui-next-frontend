@@ -1,4 +1,6 @@
 <template>
+  <v-alert type="info" variant="tonal" class="mb-4" :text="$t('organization.serviceHelp')" />
+  <v-tabs v-model="category" class="mb-4" show-arrows><v-tab value="all">{{ $t('all') }}</v-tab><v-tab value="network">{{ $t('organization.networkServices') }}</v-tab><v-tab value="ai">{{ $t('organization.aiServices') }}</v-tab></v-tabs>
   <ServiceVue 
     v-model="modal.visible"
     :visible="modal.visible"
@@ -16,7 +18,7 @@
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" sm="4" md="3" lg="2" v-for="(item, index) in <any[]>services" :key="item.tag">
+    <v-col cols="12" sm="4" md="3" lg="2" v-for="item in <any[]>filteredServices" :key="item.tag">
       <v-card rounded="xl" elevation="5" min-width="200" :title="item.tag">
         <v-card-subtitle style="margin-top: -15px;">
           <v-row>
@@ -49,12 +51,12 @@
             <v-icon />
             <v-tooltip activator="parent" location="top" :text="$t('actions.edit')"></v-tooltip>
           </v-btn>
-          <v-btn icon="mdi-file-remove" style="margin-inline-start:0;" color="warning" @click="delOverlay[index] = true">
+          <v-btn icon="mdi-file-remove" style="margin-inline-start:0;" color="warning" @click="delOverlay[item.id] = true">
             <v-icon />
             <v-tooltip activator="parent" location="top" :text="$t('actions.del')"></v-tooltip>
           </v-btn>
           <v-overlay
-            v-model="delOverlay[index]"
+            v-model="delOverlay[item.id]"
             contained
             class="align-center justify-center"
           >
@@ -63,7 +65,7 @@
               <v-card-text>{{ $t('confirm') }}</v-card-text>
               <v-card-actions>
                 <v-btn color="error" variant="outlined" @click="delSrv(item.id)">{{ $t('yes') }}</v-btn>
-                <v-btn color="success" variant="outlined" @click="delOverlay[index] = false">{{ $t('no') }}</v-btn>
+                <v-btn color="success" variant="outlined" @click="delOverlay[item.id] = false">{{ $t('no') }}</v-btn>
               </v-card-actions>
             </v-card>
           </v-overlay>
@@ -79,6 +81,8 @@ import { Srv } from '@/types/services'
 import { computed, ref } from 'vue'
 import ServiceVue from '@/layouts/modals/Service.vue'
 
+const category = ref('all')
+const filteredServices = computed(() => services.value.filter((item: any) => category.value === 'all' || (['ocm', 'ccm'].includes(item.type) ? 'ai' : 'network') === category.value))
 const services = computed((): Srv[] => {
   return <Srv[]> Data().services
 })
@@ -108,7 +112,7 @@ const modal = ref({
   data: "",
 })
 
-const delOverlay = ref(new Array<boolean>)
+const delOverlay = ref<Record<number, boolean>>({})
 
 const showModal = (id: number) => {
   modal.value.id = id
@@ -125,6 +129,6 @@ const delSrv = async (id: number) => {
   const tag = services.value[index].tag
 
   const success = await Data().save("services", "del", tag)
-  if (success) delOverlay.value[index] = false
+  if (success) delOverlay.value[id] = false
 }
 </script>

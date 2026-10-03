@@ -1,4 +1,6 @@
 <template>
+  <v-alert type="info" variant="tonal" class="mb-4" :text="$t('organization.tunnelHelp')" />
+  <v-tabs v-model="category" class="mb-4" show-arrows><v-tab value="all">{{ $t('all') }}</v-tab><v-tab value="wireguard">WireGuard</v-tab><v-tab value="warp">WARP</v-tab><v-tab value="tailscale">Tailscale</v-tab></v-tabs>
   <EndpointVue 
     v-model="modal.visible"
     :visible="modal.visible"
@@ -36,7 +38,7 @@
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" sm="4" md="3" lg="2" v-for="(item, index) in <any[]>endpoints" :key="item.tag">
+    <v-col cols="12" sm="4" md="3" lg="2" v-for="item in <any[]>filteredEndpoints" :key="item.tag">
       <v-card rounded="lg" elevation="5" min-width="200">
         <v-card-title class="text-truncate" :title="item.tag">{{ item.tag }}</v-card-title>
         <v-card-subtitle style="margin-top: -15px;">
@@ -79,12 +81,12 @@
             <v-icon />
             <v-tooltip activator="parent" location="top" :text="$t('actions.edit')"></v-tooltip>
           </v-btn>
-          <v-btn icon="mdi-file-remove" style="margin-inline-start:0;" color="warning" @click="delOverlay[index] = true">
+          <v-btn icon="mdi-file-remove" style="margin-inline-start:0;" color="warning" @click="delOverlay[item.id] = true">
             <v-icon />
             <v-tooltip activator="parent" location="top" :text="$t('actions.del')"></v-tooltip>
           </v-btn>
           <v-overlay
-            v-model="delOverlay[index]"
+            v-model="delOverlay[item.id]"
             contained
             class="align-center justify-center"
           >
@@ -93,7 +95,7 @@
               <v-card-text>{{ $t('confirm') }}</v-card-text>
               <v-card-actions>
                 <v-btn color="error" variant="outlined" @click="delEndpoint(item.tag)">{{ $t('yes') }}</v-btn>
-                <v-btn color="success" variant="outlined" @click="delOverlay[index] = false">{{ $t('no') }}</v-btn>
+                <v-btn color="success" variant="outlined" @click="delOverlay[item.id] = false">{{ $t('no') }}</v-btn>
               </v-card-actions>
             </v-card>
           </v-overlay>
@@ -122,6 +124,8 @@ import QrCode from '@/layouts/modals/WgQrCode.vue'
 import { Endpoint } from '@/types/endpoints'
 import { computed, ref } from 'vue'
 
+const category = ref('all')
+const filteredEndpoints = computed(() => endpoints.value.filter((item: any) => category.value === 'all' || item.type === category.value))
 const endpoints = computed((): Endpoint[] => {
   return <Endpoint[]> Data().endpoints
 })
@@ -141,7 +145,7 @@ const modal = ref({
   type: "wireguard",
 })
 
-const delOverlay = ref(new Array<boolean>)
+const delOverlay = ref<Record<number, boolean>>({})
 
 const showModal = (id: number, type = "wireguard") => {
   modal.value.id = id
@@ -161,9 +165,9 @@ const stats = ref({
 })
 
 const delEndpoint = async (tag: string) => {
-  const index = endpoints.value.findIndex(i => i.tag == tag)
+  const id = endpoints.value.find(i => i.tag == tag)?.id
   const success = await Data().save("endpoints", "del", tag)
-  if (success) delOverlay.value[index] = false
+  if (success && id != null) delOverlay.value[id] = false
 }
 
 const showStats = (tag: string) => {

@@ -74,9 +74,9 @@ const routes = [
         name: 'pages.settings',
 		component: () => import('@/views/SettingsTools.vue'),
       },
-	  { path: '/basics', redirect: '/config' },
-	  { path: '/dns', redirect: '/config' },
-	  { path: '/rules', redirect: '/config' },
+	  { path: '/basics', redirect: { path: '/config', query: { tab: 'basics' } } },
+	  { path: '/dns', redirect: { path: '/config', query: { tab: 'dns' } } },
+	  { path: '/rules', redirect: { path: '/config', query: { tab: 'route' } } },
     ],
   },
 ]

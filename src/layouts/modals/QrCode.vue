@@ -69,9 +69,7 @@
 <script lang="ts">
 import QrcodeVue from 'qrcode.vue'
 import Data from '@/store/modules/data'
-import Clipboard from 'clipboard'
-import { i18n } from '@/locales'
-import { push } from 'notivue'
+import { copyToClipboard } from '@/plugins/copy'
 
 export default {
   props: ['id', 'visible'],
@@ -89,36 +87,7 @@ export default {
       this.client = newData
       this.loading = false
     },
-    copyToClipboard(txt:string) {
-      const hiddenButton = document.createElement('button')
-      hiddenButton.className = 'clipboard-btn'
-      document.body.appendChild(hiddenButton)
-
-      const clipboard = new Clipboard('.clipboard-btn', {
-        text: () => txt,
-        container: document.getElementById('qrcode-modal')?? undefined
-      });
-
-      clipboard.on('success', () => {
-        clipboard.destroy()
-        push.success({
-          message: i18n.global.t('success') + ": " + i18n.global.t('copyToClipboard'),
-          duration: 5000,
-        })
-      })
-
-      clipboard.on('error', () => {
-        clipboard.destroy()
-        push.error({
-          message: i18n.global.t('failed') + ": " + i18n.global.t('copyToClipboard'),
-          duration: 5000,
-        })
-      })
-
-      // Perform click on hidden button to trigger copy
-      hiddenButton.click()
-      document.body.removeChild(hiddenButton)
-    }
+    copyToClipboard
   },
   computed: {
     clientSub() {

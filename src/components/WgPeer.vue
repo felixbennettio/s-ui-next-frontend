@@ -6,7 +6,7 @@
     <v-col v-if="managedClient" cols="12" md="8">
       <v-text-field :model-value="privateKeyDisplay" readonly type="password" :label="$t('types.wg.clientPrivateKey')" :hint="$t('types.wg.privateKeyExportHint')" persistent-hint>
         <template #append-inner>
-          <v-btn icon="mdi-content-copy" size="small" variant="text" :disabled="!canCopyPrivateKey" :title="$t('types.wg.copySecret')" @click.stop="copySecret(privateKeyDisplay)" />
+          <v-btn icon="mdi-content-copy" size="small" variant="text" :disabled="!canCopyPrivateKey" :title="$t('types.wg.copySecret')" @click.stop="copyStoredSecret('client_private_key', privateKeyDisplay)" />
           <v-btn icon="mdi-key-star" size="small" variant="text" :title="$t(data.client_private_key || data.client_private_key_set ? 'types.wg.regenerateKeyPair' : 'types.wg.generateKeyPair')" @click.stop="refreshKey" />
         </template>
       </v-text-field>
@@ -22,7 +22,7 @@
     <v-col cols="12" md="8">
       <v-text-field v-model="pskValue" type="password" :label="$t('types.wg.psk')" :hint="pskIsRedacted ? $t('types.wg.secretRedacted') : ''" persistent-hint>
         <template #append-inner>
-          <v-btn icon="mdi-content-copy" size="small" variant="text" :disabled="!canCopyPsk" :title="$t('types.wg.copySecret')" @click.stop="copySecret(data.pre_shared_key)" />
+          <v-btn icon="mdi-content-copy" size="small" variant="text" :disabled="!canCopyPsk" :title="$t('types.wg.copySecret')" @click.stop="copyStoredSecret('pre_shared_key', data.pre_shared_key)" />
           <v-btn icon="mdi-shield-key-outline" size="small" variant="text" :title="$t(data.pre_shared_key || data.pre_shared_key_set ? 'types.wg.regeneratePsk' : 'types.wg.generatePsk')" @click.stop="generatePsk" />
           <v-btn icon="mdi-close-circle-outline" size="small" variant="text" :disabled="!data.pre_shared_key && !data.pre_shared_key_set" :title="$t('types.wg.clearPsk')" @click.stop="clearPsk" />
         </template>
@@ -64,6 +64,7 @@
 </template>
 
 <script lang="ts">
+import { copyToClipboard } from '@/plugins/copy'
 import HttpUtils from '@/plugins/httputil'
 
 const redactedSecret = '[redacted]'
@@ -97,7 +98,12 @@ export default {
     refreshKey() { this.$emit('refreshPeerKey') },
     secretVisible(value: string) { return Boolean(value) && value !== redactedSecret && !String(value).includes('•') },
     async copySecret(value: string) {
-      if (this.secretVisible(value)) await navigator.clipboard.writeText(value)
+      if (this.secretVisible(value)) await copyToClipboard(value)
+    },
+    async copyStoredSecret(field: string, value: string) {
+      if (this.secretVisible(value)) return copyToClipboard(value)
+      const response = await HttpUtils.post('api/wireguardSecret', { id: this.endpoint.id, field, publicKey: this.data.public_key })
+      if (response.success) await copyToClipboard(response.obj)
     },
     parseKeypair(lines: string[]) {
       const result = { private_key: '', public_key: '', pre_shared_key: '' }
@@ -265,8 +271,8 @@ export default {
         delete this.data.pre_shared_key_clear
       },
     },
-    canCopyPrivateKey() { return this.secretVisible(this.privateKeyDisplay) },
-    canCopyPsk() { return this.secretVisible(this.data.pre_shared_key) },
+    canCopyPrivateKey() { return this.secretVisible(this.privateKeyDisplay) || Boolean(this.endpoint.id && this.data.client_private_key_set) },
+    canCopyPsk() { return this.secretVisible(this.data.pre_shared_key) || Boolean(this.endpoint.id && this.data.pre_shared_key_set) },
   },
 }
 </script>

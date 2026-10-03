@@ -8,7 +8,7 @@
         <v-col cols="12" md="8">
           <v-text-field v-model="data.private_key" type="password" :label="$t('types.wg.serverPrivateKey')" :hint="$t('types.wg.privateKeyExportHint')" persistent-hint>
             <template #append-inner>
-              <v-btn icon="mdi-content-copy" size="small" variant="text" :disabled="!canCopy(data.private_key)" :title="$t('types.wg.copySecret')" @click.stop="copySecret(data.private_key)" />
+              <v-btn icon="mdi-content-copy" size="small" variant="text" :disabled="!canCopy(data.private_key) && !(data.id && data.private_key_set)" :title="$t('types.wg.copySecret')" @click.stop="copyPrivateKey" />
               <v-btn icon="mdi-key-star" size="small" variant="text" :title="$t(data.private_key || data.private_key_set ? 'types.wg.regenerateKeyPair' : 'types.wg.generateKeyPair')" @click.stop="newKey" />
             </template>
           </v-text-field>
@@ -93,7 +93,9 @@
 </template>
 
 <script lang="ts">
+import { copyToClipboard } from '@/plugins/copy'
 import Peer from '@/components/WgPeer.vue'
+import HttpUtils from '@/plugins/httputil'
 
 export default {
   props: ['data'],
@@ -122,7 +124,12 @@ export default {
     newKey() { this.$emit('newWgKey') },
     canCopy(value: string) { return Boolean(value) && value !== '[redacted]' && !String(value).includes('•') },
     async copySecret(value: string) {
-      if (this.canCopy(value)) await navigator.clipboard.writeText(value)
+      if (this.canCopy(value)) await copyToClipboard(value)
+    },
+    async copyPrivateKey() {
+      if (this.canCopy(this.data.private_key)) return copyToClipboard(this.data.private_key)
+      const response = await HttpUtils.post('api/wireguardSecret', { id: this.data.id, field: 'private_key' })
+      if (response.success) await copyToClipboard(response.obj)
     },
     getWgPubKey() {
       if (this.canCopy(this.data.private_key)) this.$emit('getWgPubKey', this.data.private_key)
