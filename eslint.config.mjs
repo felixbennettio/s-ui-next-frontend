@@ -14,6 +14,7 @@ export default defineConfig(
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,vue}'],
+    plugins: { vue: pluginVue, '@typescript-eslint': tseslint.plugin },
     languageOptions: {
       globals: {
         ...globals.browser,
