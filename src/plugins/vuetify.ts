@@ -36,14 +36,20 @@ export default createVuetify({
     themes: {
       light: {
         colors: {
-          error: '#FF5252',
+          error: '#C62828',
+          info: '#1565C0',
+          warning: '#8A5800',
+          success: '#2E7D32',
           background: colors.grey.lighten4,
         },
       },
       dark: {
         colors: {
-          primary: colors.blue.darken4,
-          error: colors.red.accent3,
+          primary: colors.blue.lighten2,
+          info: colors.blue.lighten2,
+          error: colors.red.lighten3,
+          warning: colors.amber.lighten1,
+          success: colors.green.lighten3,
         },
       },
     },

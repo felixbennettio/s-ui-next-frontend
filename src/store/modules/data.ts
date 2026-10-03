@@ -8,6 +8,9 @@ import { Client } from '@/types/clients'
 const Data = defineStore('Data', {
   state: () => ({ 
     lastLoad: 0,
+    lastCoreError: "",
+    saveRevision: 0,
+    pendingSaves: 0,
     reloadItems: localStorage.getItem("reloadItems")?.split(',')?? <string[]>[],
     subURI: "",
     enableTraffic: false,
@@ -22,13 +25,16 @@ const Data = defineStore('Data', {
   }),
   actions: {
     async loadData() {
+      if (this.pendingSaves) return
+      const revision = this.saveRevision
       const msg = await HttpUtils.get('api/load', this.lastLoad >0 ? {lu: this.lastLoad} : {} )
-      if(msg.success) {
+      if(msg.success && revision === this.saveRevision && !this.pendingSaves) {
         const payload = msg.obj && typeof msg.obj === 'object' ? msg.obj : {}
         const nextCursor = Number(payload.lastUpdate)
         if (Number.isFinite(nextCursor) && nextCursor >= 0) this.lastLoad = nextCursor
         if (Object.hasOwn(payload, 'onlines')) this.onlines = payload.onlines ?? { inbound: [], outbound: [], user: [] }
-        if (payload.lastLog) {
+        if (payload.lastLog && !payload.coreApplying && payload.lastLog !== this.lastCoreError) {
+          this.lastCoreError = payload.lastLog
           push.error({
             title: i18n.global.t('error.core'),
             duration: 5000,
@@ -42,6 +48,7 @@ const Data = defineStore('Data', {
       }
     },
     setNewData(data: any) {
+      if (!data || typeof data !== 'object') return
       if (Object.hasOwn(data, 'subURI')) this.subURI = data.subURI ?? ''
       if (Object.hasOwn(data, 'enableTraffic')) this.enableTraffic = data.enableTraffic === true
       if (Object.hasOwn(data, 'config')) this.config = data.config ?? {}
@@ -76,17 +83,25 @@ const Data = defineStore('Data', {
         initUsers: initUsers?.join(',') ?? undefined,
         apply: apply,
       }
-      const msg = await HttpUtils.post('api/save', postData)
-      if (msg.success) {
-        const objectName = ['tls', 'config'].includes(object) ? object : object.substring(0, object.length - 1)
-        push.success({
-          title: i18n.global.t('success'),
-          duration: 5000,
-          message: i18n.global.t('actions.' + action) + " " + i18n.global.t('objects.' + objectName)
-        })
-        this.setNewData(msg.obj)
+      this.saveRevision++
+      this.pendingSaves++
+      try {
+        const msg = await HttpUtils.post('api/save', postData)
+        if (msg.success) {
+          const objectName = ['tls', 'config'].includes(object) ? object : object.substring(0, object.length - 1)
+          push.success({
+            title: i18n.global.t('success'),
+            duration: 5000,
+            message: i18n.global.t('actions.' + action) + " " + i18n.global.t('objects.' + objectName)
+          })
+          this.setNewData(msg.obj)
+          if (msg.warning) this.lastLoad = 0
+        }
+        return msg.success
+      } finally {
+        this.pendingSaves--
+        this.saveRevision++
       }
-      return msg.success
     },
     // Check duplicate client name
     checkClientName (id: number, newName: string): boolean {

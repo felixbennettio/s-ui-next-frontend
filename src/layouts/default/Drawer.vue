@@ -1,68 +1,46 @@
 <template>
-  <v-navigation-drawer
-    v-model="showDrawer"
-    :temporary="isMobile"
-    :expand-on-hover="!isMobile"
-    :rail="!isMobile"
-    :permanent="!isMobile"
-    @click="isMobile ? $emit('toggleDrawer') : null"
-  >
-    <v-list-item
-      height="63"
-      prepend-avatar="@/assets/logo.svg"
-      title="S-UI Next"
-    >
-      <template v-slot:append v-if="isMobile">
-        <v-icon icon="mdi-close" />
-      </template>
+  <v-navigation-drawer :model-value="showDrawer" :temporary="isMobile" :permanent="!isMobile" width="240" @update:model-value="updateDrawer">
+    <v-list-item height="64" prepend-avatar="@/assets/logo.svg" title="S-UI Next">
+      <template v-if="isMobile" #append><v-btn icon="mdi-close" variant="text" :aria-label="$t('actions.close')" @click="$emit('toggleDrawer')" /></template>
     </v-list-item>
-
-    <v-divider></v-divider>
-
+    <v-divider />
     <v-list density="compact" nav>
-      <v-list-item link
-        v-for="item in menu"
-        :key="item.title"
-        :to="item.path"
-        :active="router.currentRoute.value.path == item.path">
-        <template v-slot:prepend>
-          <v-icon :icon="item.icon"></v-icon>
-        </template>
-        <v-list-item-title>{{ $t(item.title) }}</v-list-item-title>
-      </v-list-item>
+      <template v-for="group in groups" :key="group.title">
+        <v-list-subheader>{{ $t(group.title) }}</v-list-subheader>
+        <v-list-item v-for="item in group.items" :key="item.path" :to="item.path" :prepend-icon="item.icon" :title="$t(item.title)" :active="route.path === item.path" color="primary" @click="isMobile && $emit('toggleDrawer')" />
+      </template>
     </v-list>
-    <template v-slot:append>
-      <v-list-item prepend-icon="mdi-logout" :title="$t('menu.logout')" @click="Logout"></v-list-item>
-    </template>
+    <template #append><v-list-item prepend-icon="mdi-logout" :title="$t('menu.logout')" @click="logout" /></template>
   </v-navigation-drawer>
 </template>
-
 <script lang="ts" setup>
 import { computed } from 'vue'
-import router from '@/router'
+import { useRoute } from 'vue-router'
 import { logout } from '@/plugins/httputil'
-
-const props = defineProps(['isMobile','displayDrawer'])
-
-const showDrawer = computed((): boolean => {
-  return props.displayDrawer
-})
-
-const menu = [
-  { title: 'pages.home', icon: 'mdi-home',  path: '/' },
-  { title: 'pages.clients', icon: 'mdi-account-multiple',  path: '/clients' },
-	{ title: 'pages.inbounds', icon: 'mdi-cloud-download',  path: '/inbounds' },
-  { title: 'pages.outbounds', icon: 'mdi-cloud-upload',  path: '/outbounds' },
-  { title: 'pages.endpoints', icon: 'mdi-cloud-tags',  path: '/endpoints' },
-  { title: 'pages.services', icon: 'mdi-server',  path: '/services' },
-  { title: 'pages.tls', icon: 'mdi-certificate',  path: '/tls' },
-	{ title: 'pages.config', icon: 'mdi-tune-variant',  path: '/config' },
-	{ title: 'pages.analytics', icon: 'mdi-chart-line',  path: '/analytics' },
-  { title: 'pages.admins', icon: 'mdi-account-tie',  path: '/admins' },
-  { title: 'pages.settings', icon: 'mdi-cog',  path: '/settings' },
+const props = defineProps(['isMobile', 'displayDrawer'])
+const emit = defineEmits(['toggleDrawer'])
+const route = useRoute()
+const showDrawer = computed(() => props.displayDrawer)
+const updateDrawer = (value: boolean) => { if (value !== props.displayDrawer) emit('toggleDrawer') }
+const groups = [
+  { title: 'navigation.overview', items: [
+    { title: 'pages.home', icon: 'mdi-view-dashboard-outline', path: '/' },
+    { title: 'pages.analytics', icon: 'mdi-chart-line', path: '/analytics' },
+  ]},
+  { title: 'navigation.access', items: [
+    { title: 'pages.clients', icon: 'mdi-account-multiple-outline', path: '/clients' },
+    { title: 'pages.inbounds', icon: 'mdi-login', path: '/inbounds' },
+    { title: 'pages.tls', icon: 'mdi-certificate-outline', path: '/tls' },
+  ]},
+  { title: 'navigation.network', items: [
+    { title: 'pages.outbounds', icon: 'mdi-logout-variant', path: '/outbounds' },
+    { title: 'pages.endpoints', icon: 'mdi-vpn', path: '/endpoints' },
+    { title: 'pages.config', icon: 'mdi-routes', path: '/config' },
+  ]},
+  { title: 'navigation.operations', items: [
+    { title: 'pages.services', icon: 'mdi-server-network-outline', path: '/services' },
+    { title: 'pages.settings', icon: 'mdi-cog-outline', path: '/settings' },
+    { title: 'pages.admins', icon: 'mdi-account-key-outline', path: '/admins' },
+  ]},
 ]
-
-const Logout = async () => {
-  logout()
-}
 </script>

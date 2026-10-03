@@ -41,9 +41,7 @@
             </v-btn>
           </v-col>
         </v-row>
-        <v-card class="log-lines" dir="ltr">
-          <div v-for="(line, index) in lines" :key="index" class="log-line">{{ line }}</div>
-        </v-card>
+        <LogLines :lines="lines" />
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -51,8 +49,10 @@
 
 <script lang="ts">
 import HttpUtils from '@/plugins/httputil'
+import LogLines from '@/components/LogLines.vue'
 
 export default {
+  components: { LogLines },
   props: ['control', 'visible'],
   data() {
     return {
@@ -63,7 +63,7 @@ export default {
         { title: 'DEBUG', value: 'debug' },
         { title: 'INFO', value: 'info' },
         { title: 'WARNING', value: 'warning' },
-        { title: 'ERROR', value: 'err' },
+        { title: 'ERROR', value: 'error' },
       ],
       logCount: 10,
     }
@@ -96,6 +96,4 @@ export default {
 
 <style scoped>
 .log-dialog-content { min-width: 0; overflow: hidden; }
-.log-lines { width: 100%; max-width: 100%; max-height: 60vh; overflow: auto; padding: 12px; background: rgb(var(--v-theme-surface-variant)); }
-.log-line { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 </style>

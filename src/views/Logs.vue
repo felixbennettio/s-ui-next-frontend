@@ -39,6 +39,7 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 import HttpUtils from '@/plugins/httputil'
+import { logLevelColor as levelColor } from '@/plugins/logs'
 
 const loading = ref(false)
 const items = ref<any[]>([])
@@ -55,7 +56,7 @@ const load = async () => {
   if (response.success) items.value = response.obj?.items ?? []
   loading.value = false
 }
-const levelColor = (value: string) => ({ DEBUG: 'secondary', INFO: 'info', WARNING: 'warning', ERROR: 'error' } as any)[value] ?? 'default'
+
 const formatTime = (value: number) => value ? new Date(value * 1000).toLocaleString() : '—'
 onMounted(load)
 </script>

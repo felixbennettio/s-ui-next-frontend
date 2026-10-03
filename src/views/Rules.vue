@@ -199,12 +199,12 @@ const routeMark = computed({
 const stateChange = computed(() => FindDiff.deepCompare(appConfig.value, oldConfig.value))
 
 const saveConfig = async () => {
+  if (loading.value) return
   loading.value = true
-  const success = await Data().save("config", "set", appConfig.value)
-  if (success) {
-    oldConfig.value = JSON.parse(JSON.stringify(Data().config))
-    loading.value = false
-  }
+  try {
+    const success = await Data().save("config", "set", appConfig.value)
+    if (success) oldConfig.value = JSON.parse(JSON.stringify(Data().config))
+  } finally { loading.value = false }
 }
 
 const clients = computed((): string[] => Data().clients.map((c:any) => c.name))

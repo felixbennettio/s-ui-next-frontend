@@ -12,9 +12,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Settings from './Settings.vue'
 import Tools from './Tools.vue'
 
-const tab = ref('settings')
+const route = useRoute(), router = useRouter()
+const tab = computed({ get: () => route.query.tab === 'tools' ? 'tools' : 'settings', set: value => { router.replace({ query: { ...route.query, tab: value } }) } })
 </script>
